@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+	precision mediump float;
+	attribute vec4 vertexPosition;
+	attribute vec3 nv;
+	attribute vec4 vertexColor;
+	varying vec4 fragmentColor;
+	uniform mat4 M, M_inversetranspose, P_persp; //modelview/perspective uniforms
+	
+	uniform float xshift, yshift, zshift;
+	uniform float xscale, yscale, zscale;
+	uniform float xrot, yrot, zrot;
+	
+	attribute vec2 texturePosition;
+	varying vec2 textureCoord;
+	varying vec3 n;
+	
+	
+	
+	
+	void main(){
+		gl_PointSize = 1.0;
+		mat4 Mx = mat4(1,0,0,0,
+				  0, cos(xrot), -sin(xrot), 0,
+				  0, sin(xrot), cos(xrot), 0,
+				  0, 0, 0, 1);
+		mat4 My = mat4(cos(yrot), 0, -sin(yrot), 0,
+				  0, 1, 0, 0,
+				  sin(yrot), 0, cos(yrot), 0,
+				  0, 0, 0, 1);
+		mat4 Mz = mat4(cos(zrot), -sin(zrot), 0, 0,
+				  sin(zrot), cos(zrot), 0, 0,
+				  0, 0, 1, 0,
+				  0, 0, 0, 1);
+		mat4 Mtrans = mat4(1,0,0,0,
+					  0,1,0,0,
+					  0,0,1,0,
+					  xshift,yshift,zshift,1);
+		mat4 Mscale = mat4(xscale,0,0,0,
+						  0,yscale,0,0,
+						  0,0,zscale,0,
+						  0,0,0,1);
+		mat4 Mrot = Mz*My*Mx;
+		mat4 Mtransformed = Mscale * Mtrans * Mrot;
+		
+		//Transform vertices by modelview
+		vec4 vertexPositionTransformed = M * Mtransformed * vertexPosition;
+		vec3 nv4transformed = mat3(M_inversetranspose * My) * nv;
+		vec3 nvtransformed = normalize(nv4transformed);	
+		n = nvtransformed;
+		
+        gl_Position = P_persp * M * Mtransformed * vertexPosition;
+		
+		textureCoord = texturePosition;
+		fragmentColor = vertexColor;
+		
+	}
+
+</script>
+
+
+
+<script id="fragShader" type="x-shader/x-fragment">
+
+	precision mediump float;
+	varying vec4 fragmentColor;
+	varying vec3 n;
+	uniform vec3 reverseVector, reverseVector2;
+	
+	varying vec2 textureCoord;
+	uniform sampler2D texMap0;
+	uniform sampler2D texMap1;
+	
+	uniform float isTexture;
+	
+	
+	void main() {
+		vec3 n_norm;
+		n_norm = normalize(n);
+
+		float light = dot(n_norm, normalize(reverseVector));
+		float light2 = dot(n_norm, normalize(reverseVector2));
+		
+		if (isTexture == 0.0) {
+			gl_FragColor = texture2D( texMap0, textureCoord );
+		}
+		else if (isTexture == 1.0) {
+			gl_FragColor = texture2D( texMap1, textureCoord );
+		}
+		else {
+			gl_FragColor = fragmentColor;
+		}
+		if (light < 0.0) {light *= -1.0;}
+		if (light2 < 0.0) {light2 *= -1.0;}
+		gl_FragColor.rgb*=light+light2;
+	}
+</script>
+<script type="text/javascript" src="Common/webgl-utils.js"></script>
+<script type="text/javascript" src="Common/initShaders.js"></script>
+<script type="text/javascript" src="Common/MV.js"></script>
+<script type="text/javascript" src="Shapes.js"></script>
+<script type="text/javascript" src="Object3D.js"></script>
+<script type="text/javascript" src="Initialize.js"></script>
+
+
+</head>
+
+<body onload="Initialize()" onkeydown="moveCamKeyboard(event)">
+	<img src="deerskin.jpg" id="deerskin" hidden>
+	<img src="fish.png" id="fish" hidden>
+	<img src="tex.jpg" id="tex" hidden>
+	<canvas id="gl-canvas" width="800" height="800" onmousemove="panCamera(event)" onmouseout="resetCameraPan()"></canvas><br/>
+	<button onclick="resetCamera()">Reset Camera</button><button onclick="resetScene()">Reset Scene</button>
+</body>
+
+</html>
